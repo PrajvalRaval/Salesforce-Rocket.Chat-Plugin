@@ -1,2 +1,3 @@
-# saleforce-livechat-integration-app
-A Rocket.Chat marketplace app for Salesforce Live Agent Integration
+# Salesforce Live Agent Integration App
+
+A Rocket.Chat marketplace app for Salesforce Live Agent (Chat) Integration.
