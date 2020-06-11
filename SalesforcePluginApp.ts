@@ -207,9 +207,13 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                                 .getCreator()
                                 .finish(pullingResponsekeybuilder);
 
+                                    // tslint:disable-next-line: max-line-length
+                                    // ADD AN ASYNC/AWAIT HTTP GET FUNCTION HERE THAT CAN HOLD THE PROGRAM FOR FURTHER EXECUTION UTIL THE RETURNED RESPONSE HAS A `ChatEstablished' TYPE
+
                             const ForwardHttpRequest: IHttpRequest = {
                                 headers: {
                                     'Content-Type': 'application/json',
+                                    // CHANGE THIS FROM HARDCODED VALUES TO DYNAMIC VALUES USING BOT LOGIN
                                     'X-Auth-Token':
                                         'RailusOoXTkehC4hvLabWHjgqwSbIaFH8v0Q1mtzCyi',
                                     'X-User-Id': 'CYEpLMFjBZ4kEdepW',
