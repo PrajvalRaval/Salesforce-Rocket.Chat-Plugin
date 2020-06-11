@@ -208,7 +208,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                                 .finish(pullingResponsekeybuilder);
 
                                     // tslint:disable-next-line: max-line-length
-                                    // ADD AN ASYNC/AWAIT HTTP GET FUNCTION HERE THAT CAN HOLD THE PROGRAM FOR FURTHER EXECUTION UTIL THE RETURNED RESPONSE HAS A `ChatEstablished' TYPE
+                                    // ADD AN ASYNC/AWAIT HTTP GET FUNCTION HERE THAT CAN HOLD THE PROGRAM FOR FURTHER EXECUTION, UNTIL THE RETURNED RESPONSE HAS A `ChatEstablished' TYPE
 
                             const ForwardHttpRequest: IHttpRequest = {
                                 headers: {
