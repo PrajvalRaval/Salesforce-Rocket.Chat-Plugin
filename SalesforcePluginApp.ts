@@ -115,7 +115,6 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                         .setRoom(message.room)
                         .setText(
                             `Session Initiated With Saleforce:
-
                         ${sessionIdkey}
                         `,
                         )
@@ -165,7 +164,6 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                             .setRoom(message.room)
                             .setText(
                                 `Sent A Chat Request To Salesforce:
-
                         ${chatReqReskey}
                         `,
                             )
@@ -198,7 +196,6 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                                 .setRoom(message.room)
                                 .setText(
                                     `Pulling Status From The Server:
-
                         Current Status: ${pullingKey.messages[0].type}
                         `,
                                 )
@@ -207,10 +204,90 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                                 .getCreator()
                                 .finish(pullingResponsekeybuilder);
 
+                            const callback = (data?, error?) => {
+                                    // consume data
+                                    if (error) {
+                                        console.error(error);
+                                        return;
+                                    }
+                                    console.log(data);
+
+                                    // tslint:disable-next-line: no-shadowed-variable
+                                    const ForwardHttpRequest: IHttpRequest = {
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            // CHANGE THIS FROM HARDCODED VALUES TO DYNAMIC VALUES USING BOT LOGIN
+                                            'X-Auth-Token':
+                                                'RailusOoXTkehC4hvLabWHjgqwSbIaFH8v0Q1mtzCyi',
+                                            'X-User-Id': 'CYEpLMFjBZ4kEdepW',
+                                        },
+                                        data: {
+                                            roomId: message.room.id,
+                                            departmentId: '5euwwL5x6JCp9Pq4S',
+                                        },
+                                    };
+                                    http.post(
+                                        'http://localhost:3000/api/v1/livechat/room.forward',
+                                        ForwardHttpRequest,
+                                    ).then((forwardResponse) => {
+                                        console.log(
+                                            'room.forward response --> ' +
+                                                forwardResponse,
+                                        );
+                                    });
+                                };
+
+                            let retries = 20;
+
+                            // tslint:disable-next-line: no-shadowed-variable
+                            function request(callback) {
+                                http.get(
+                                    `${SalesforceEndpoint}System/Messages`,
+                                    pullingHttpRequest,
+                                ).then((response) => {
+                                    // request successful
+
+                                    const t = response.content;
+                                    const tk = JSON.parse(t || '{}');
+
+                                    if (tk.messages[0]) {
+
+                                        if (tk.messages[0].type === 'ChatEstablished') {
+                                            // server done, deliver data to script to consume
+                                            callback(response);
+                                        }
+
+                                    } else {
+                                        // server not done yet
+                                        // retry, if any retries left
+                                        if (retries > 0) {
+                                            --retries;
+                                            request(callback);
+                                        } else {
+                                            // no retries left, calling callback with error
+                                            callback([], 'out of retries');
+                                        }
+                                    }
+                                }).catch((error) => {
+                                    // ajax error occurred
+                                    // would be better to not retry on 404, 500 and other unrecoverable HTTP errors
+                                    // retry, if any retries left
+                                    if (retries > 0) {
+                                        --retries;
+                                        request(callback);
+                                    } else {
+                                        // no retries left, calling callback with error
+                                        callback([], error);
+                                    }
+                                });
+                            }
+
+                            request(callback);
+
                                     // tslint:disable-next-line: max-line-length
                                     // ADD AN ASYNC/AWAIT HTTP GET FUNCTION HERE THAT CAN HOLD THE PROGRAM FOR FURTHER EXECUTION, UNTIL THE RETURNED RESPONSE HAS A `ChatEstablished' TYPE
 
-                            const ForwardHttpRequest: IHttpRequest = {
+                            /*const ForwardHttpRequest: IHttpRequest = {
                                 headers: {
                                     'Content-Type': 'application/json',
                                     // CHANGE THIS FROM HARDCODED VALUES TO DYNAMIC VALUES USING BOT LOGIN
@@ -231,7 +308,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                                     'room.forward response --> ' +
                                         forwardResponse,
                                 );
-                            });
+                            }); */
                         });
                     });
                 } else {
