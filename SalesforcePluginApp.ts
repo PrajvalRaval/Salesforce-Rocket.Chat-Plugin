@@ -17,6 +17,7 @@ import {
     ILivechatRoom,
     ILivechatTransferData,
     IVisitor,
+    IVisitorEmail,
 } from '@rocket.chat/apps-engine/definition/livechat';
 import {
     IMessage,
@@ -28,6 +29,7 @@ import {
     SettingType,
 } from '@rocket.chat/apps-engine/definition/settings';
 import { IUser } from '@rocket.chat/apps-engine/definition/users';
+import { type } from 'os';
 
 export class SalesforcePluginApp extends App implements IPostMessageSent {
     constructor(info: IAppInfo, logger: ILogger, accessors: IAppAccessors) {
@@ -49,20 +51,50 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
         persistence: IPersistence,
         modify: IModify,
     ): Promise<void> {
-        const dfbotusername: string = (
+        const dialogflowBotUsername: string = (
             await read
                 .getEnvironmentReader()
                 .getSettings()
-                .getById('dfbotusername')
+                .getById('dialogflow_bot_username')
         ).value;
-        const SalesforceEndpoint: string = (
+        const dialogflowBotPassword: string = (
             await read
                 .getEnvironmentReader()
                 .getSettings()
-                .getById('salesforcechatendpoint')
+                .getById('dialogflow_bot_password')
+        ).value;
+        const salesforceChatApiEndpoint: string = (
+            await read
+                .getEnvironmentReader()
+                .getSettings()
+                .getById('salesforce_chat_api_endpoint')
+        ).value;
+        const salesforceOrganisationId: string = (
+            await read
+                .getEnvironmentReader()
+                .getSettings()
+                .getById('salesforce_organisation_id')
+        ).value;
+        const salesforceDeploymentId: string = (
+            await read
+                .getEnvironmentReader()
+                .getSettings()
+                .getById('salesforce_deployment_id')
+        ).value;
+        const salesforceButtonId: string = (
+            await read
+                .getEnvironmentReader()
+                .getSettings()
+                .getById('salesforce_button_id')
+        ).value;
+        const targetDeptName: string = (
+            await read
+                .getEnvironmentReader()
+                .getSettings()
+                .getById('handover_department_name')
         ).value;
 
-        if (message.sender.username === dfbotusername) {
+        if (message.sender.username === dialogflowBotUsername) {
             return;
         } else if (message.room.type !== 'l') {
             return;
@@ -71,12 +103,12 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
         const lmessage: ILivechatMessage = message;
         const lroom: ILivechatRoom = lmessage.room as ILivechatRoom;
         const LcAgent: IUser = lroom.servedBy ? lroom.servedBy : message.sender;
-
-        this.getLogger().log('admin username --> ' + dfbotusername);
+        const LcVisitor: IVisitor = lroom.visitor;
+        const LcVisitorName = LcVisitor.name;
 
         if (message.text === 'initiate_salesforce_session') {
             // check whether the bot is currently handling the Visitor, if not then return back
-            if (dfbotusername !== LcAgent.username) {
+            if (dialogflowBotUsername !== LcAgent.username) {
                 return;
             }
 
@@ -97,7 +129,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
             };
 
             http.get(
-                `${SalesforceEndpoint}System/SessionId`,
+                `${salesforceChatApiEndpoint}System/SessionId`,
                 sessionIdHttpRequest,
             ).then((res) => {
                 if (res) {
@@ -107,7 +139,6 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                     console.log(content);
 
                     const sessionIdResponseJSON = JSON.parse(content || '{}');
-
                     const sessionIdkey = JSON.stringify(sessionIdResponseJSON, null, '\t');
 
                     const sessionIdbuilder = modify.getNotifier().getMessageBuilder();
@@ -123,20 +154,20 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
 
                     const sendChatRequestHttpRequest: IHttpRequest = {
                         headers: {
-                            'X-LIVEAGENT-API-VERSION': '34',
+                            'X-LIVEAGENT-API-VERSION': '48',
                             'X-LIVEAGENT-AFFINITY': sessionIdResponseJSON.affinityToken,
                             'X-LIVEAGENT-SESSION-KEY': sessionIdResponseJSON.key,
                             'X-LIVEAGENT-SEQUENCE': '1',
                         },
                         data: {
-                            organizationId: '00D2x000005MYbl',
-                            deploymentId: '5722x000000PXmD',
-                            buttonId: '5732x000000PYrK',
+                            organizationId: salesforceOrganisationId,
+                            deploymentId: salesforceDeploymentId,
+                            buttonId: salesforceButtonId,
                             sessionId: sessionIdResponseJSON.id,
                             userAgent: 'Lynx/2.8.8',
                             language: 'en-US',
                             screenResolution: '1900x1080',
-                            visitorName: 'Live Chat Test User',
+                            visitorName: LcVisitorName,
                             prechatDetails: [],
                             prechatEntities: [],
                             receiveQueueUpdates: true,
@@ -145,7 +176,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                     };
 
                     http.post(
-                        `${SalesforceEndpoint}Chasitor/ChasitorInit`,
+                        `${salesforceChatApiEndpoint}Chasitor/ChasitorInit`,
                         sendChatRequestHttpRequest,
                     ).then((chatReqRes) => {
                         console.log('chatReqRes response');
@@ -172,7 +203,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
 
                         const pullingHttpRequest: IHttpRequest = {
                             headers: {
-                                'X-LIVEAGENT-API-VERSION': '34',
+                                'X-LIVEAGENT-API-VERSION': '48',
                                 'X-LIVEAGENT-AFFINITY':
                                 sessionIdResponseJSON.affinityToken,
                                 'X-LIVEAGENT-SESSION-KEY': sessionIdResponseJSON.key,
@@ -180,7 +211,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                         };
 
                         http.get(
-                            `${SalesforceEndpoint}System/Messages`,
+                            `${salesforceChatApiEndpoint}System/Messages`,
                             pullingHttpRequest,
                         ).then((pullingResponse) => {
                             console.log('pullingHttpRequest');
@@ -204,6 +235,8 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                                 .getCreator()
                                 .finish(pullingResponsekeybuilder);
 
+                            let retries = 20;
+
                             const callback = (data?, error?) => {
                                     // consume data
                                     if (error) {
@@ -211,38 +244,76 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                                         return;
                                     }
                                     console.log(data);
+                                    retries = 0;
 
-                                    // tslint:disable-next-line: no-shadowed-variable
-                                    const ForwardHttpRequest: IHttpRequest = {
+                                    const authHttpRequest: IHttpRequest = {
                                         headers: {
                                             'Content-Type': 'application/json',
-                                            // CHANGE THIS FROM HARDCODED VALUES TO DYNAMIC VALUES USING BOT LOGIN
-                                            'X-Auth-Token':
-                                                'RailusOoXTkehC4hvLabWHjgqwSbIaFH8v0Q1mtzCyi',
-                                            'X-User-Id': 'CYEpLMFjBZ4kEdepW',
                                         },
                                         data: {
-                                            roomId: message.room.id,
-                                            departmentId: '5euwwL5x6JCp9Pq4S',
+                                            user: dialogflowBotUsername,
+                                            password: dialogflowBotPassword,
                                         },
                                     };
-                                    http.post(
-                                        'http://localhost:3000/api/v1/livechat/room.forward',
-                                        ForwardHttpRequest,
-                                    ).then((forwardResponse) => {
-                                        console.log(
-                                            'room.forward response --> ' +
-                                                forwardResponse,
-                                        );
-                                    });
-                                };
 
-                            let retries = 20;
+                                    http.post('http://localhost:3000/api/v1/login', authHttpRequest).then(
+                                        (loginResponse) => {
+                                            // console.log(loginResponse.content);
+                                            const loginResponseJSON = JSON.parse((loginResponse.content || '{}'));
+                                            console.log('loginResponseJSON.data.userId --> ' + loginResponseJSON.data.userId);
+                                            console.log('loginResponseJSON.data.authToken --> ' + loginResponseJSON.data.authToken);
+                                            console.log('message.room.id --> ' + message.room.id);
+
+                                            const deptHttpRequest: IHttpRequest = {
+                                                headers: {
+                                                    'X-Auth-Token': loginResponseJSON.data.authToken,
+                                                    'X-User-Id': loginResponseJSON.data.userId,
+                                                },
+                                            };
+                                            // http_request_no_2 --> get department id
+                                            http.get('http://localhost:3000/api/v1/livechat/department', deptHttpRequest).then(
+                                                (deptResponse) => {
+                                                    const deptResponseJSON = JSON.parse((deptResponse.content || '{}'));
+                                                    // console.log(deptResponseJSON);
+                                                    let targetDeptId: string = '';
+                                                    deptResponseJSON.departments.forEach(
+                                                        (department) => {
+                                                            if (department.name === targetDeptName) {
+                                                                targetDeptId = department._id;
+                                                            }
+                                                        },
+                                                    );
+
+                                                    console.log('Target Dept Id --> ' + targetDeptId);
+
+                                                    // http_request_no_3 --> make handover request
+                                                    const ForwardHttpRequest: IHttpRequest = {
+                                                        headers: {
+                                                            'Content-Type': 'application/json',
+                                                            'X-Auth-Token': loginResponseJSON.data.authToken,
+                                                            'X-User-Id': loginResponseJSON.data.userId,
+                                                        },
+                                                        data: {
+                                                            roomId: message.room.id,
+                                                            departmentId: targetDeptId,
+                                                        },
+                                                    };
+                                                    http.post('http://localhost:3000/api/v1/livechat/room.forward', ForwardHttpRequest).then(
+                                                        (forwardResponse) => {
+                                                            console.log('room.forward response --> ' + forwardResponse);
+                                                        },
+                                                    );
+                                                },
+                                            );
+                                        },
+                                    );
+
+                                };
 
                             // tslint:disable-next-line: no-shadowed-variable
                             function request(callback) {
                                 http.get(
-                                    `${SalesforceEndpoint}System/Messages`,
+                                    `${salesforceChatApiEndpoint}System/Messages`,
                                     pullingHttpRequest,
                                 ).then((response) => {
                                     // request successful
@@ -283,32 +354,6 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                             }
 
                             request(callback);
-
-                                    // tslint:disable-next-line: max-line-length
-                                    // ADD AN ASYNC/AWAIT HTTP GET FUNCTION HERE THAT CAN HOLD THE PROGRAM FOR FURTHER EXECUTION, UNTIL THE RETURNED RESPONSE HAS A `ChatEstablished' TYPE
-
-                            /*const ForwardHttpRequest: IHttpRequest = {
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    // CHANGE THIS FROM HARDCODED VALUES TO DYNAMIC VALUES USING BOT LOGIN
-                                    'X-Auth-Token':
-                                        'RailusOoXTkehC4hvLabWHjgqwSbIaFH8v0Q1mtzCyi',
-                                    'X-User-Id': 'CYEpLMFjBZ4kEdepW',
-                                },
-                                data: {
-                                    roomId: message.room.id,
-                                    departmentId: '5euwwL5x6JCp9Pq4S',
-                                },
-                            };
-                            http.post(
-                                'http://localhost:3000/api/v1/livechat/room.forward',
-                                ForwardHttpRequest,
-                            ).then((forwardResponse) => {
-                                console.log(
-                                    'room.forward response --> ' +
-                                        forwardResponse,
-                                );
-                            }); */
                         });
                     });
                 } else {
@@ -321,31 +366,106 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                 }
             });
         }
+
+        if ('salesforce.agent' === LcAgent.username) {
+
+            const sendMessageHttpRequest: IHttpRequest = {
+                headers: {
+                    'X-LIVEAGENT-API-VERSION': '48',
+                    'X-LIVEAGENT-AFFINITY': 'f4941fa0',
+                    'X-LIVEAGENT-SESSION-KEY': '99fef40f-a3e4-4e42-a86c-a4964f7a59f9!1592235600340!0uBrBJJFF9gDQVCMHVSvAIbKi14=',
+                },
+                data: {
+                    text: message.text,
+                },
+            };
+
+            http.post(
+                `${salesforceChatApiEndpoint}Chasitor/ChatMessage`,
+                sendMessageHttpRequest,
+            ).then((res) => {
+                console.log(res);
+            });
+
+        // console.log('this is sessionSFaffinity ' + wjqdent);
+        }
+
     }
 
     protected async extendConfiguration(
         configuration: IConfigurationExtend,
     ): Promise<void> {
-        const dfbotusername: ISetting = {
-            id: 'dfbotusername',
+        const dialogflowBotUsername: ISetting = {
+            id: 'dialogflow_bot_username',
             public: true,
             type: SettingType.STRING,
             packageValue: '',
             i18nLabel: 'Dialogflow Bot Username',
             required: true,
         };
-        const salesforcechatendpoint: ISetting = {
-            id: 'salesforcechatendpoint',
+        const dialogflowBotPassword: ISetting = {
+            id: 'dialogflow_bot_password',
             public: true,
             type: SettingType.STRING,
             packageValue: '',
-            i18nLabel: 'Saleforce Chat Enpoint',
+            i18nLabel: 'Dialogflow Bot Password',
+            required: true,
+        };
+        const salesforceChatApiEndpoint: ISetting = {
+            id: 'salesforce_chat_api_endpoint',
+            public: true,
+            type: SettingType.STRING,
+            packageValue: '',
+            i18nLabel: 'Salesforce Chat Enpoint',
             i18nDescription:
-                'To find this value, go to your Salesforce Dashboard -> Setup (In Gear Icon) -> Quick Find Search -> Type in chat setting -> Click on Chat Settings option',
+                'To find this value, go to your Salesforce Dashboard -> Setup (In Gear Icon) -> Quick Find Search -> Type in: chat setting -> Click on Chat Settings option -> Copy Chat API Endpoint value.',
+            required: true,
+        };
+        const salesforceOrganisationId: ISetting = {
+            id: 'salesforce_organisation_id',
+            public: true,
+            type: SettingType.STRING,
+            packageValue: '',
+            i18nLabel: 'Salesforce Organization ID',
+            i18nDescription:
+                'To find this value, go to your Salesforce Dashboard -> Setup (In Gear Icon) -> Quick Find Search -> Type in: company information -> Click on Company Information option -> Copy Salesforce.com Organization ID	value.',
+            required: true,
+        };
+        const salesforceDeploymentId: ISetting = {
+            id: 'salesforce_deployment_id',
+            public: true,
+            type: SettingType.STRING,
+            packageValue: '',
+            i18nLabel: 'Salesforce Deployment ID',
+            i18nDescription:
+                'To find this value, go to your Salesforce Dashboard -> Setup (In Gear Icon) -> Quick Find Search -> Type in: embedded service deployments -> Click on Embedded Service Deployments option -> Locate current chat group and click on View -> From Embedded Service Code Snippets option, click on Get Code -> Locate the value of deploymentId from Chat Code Snippet.',
+            required: true,
+        };
+        const salesforceButtonId: ISetting = {
+            id: 'salesforce_button_id',
+            public: true,
+            type: SettingType.STRING,
+            packageValue: '',
+            i18nLabel: 'Salesforce Button ID',
+            i18nDescription:
+                'To find this value, go to your Salesforce Dashboard -> Setup (In Gear Icon) -> Quick Find Search -> Type in: embedded service deployments -> Click on Embedded Service Deployments option -> Locate current chat group and click on View -> From Embedded Service Code Snippets option, click on Get Code -> Locate the value of buttonId from Chat Code Snippet.',
+            required: true,
+        };
+        const handoverTargetDepartmentName: ISetting = {
+            id: 'handover_department_name',
+            public: true,
+            type: SettingType.STRING,
+            packageValue: '',
+            i18nLabel: 'Handover Target Department Name',
             required: true,
         };
 
-        configuration.settings.provideSetting(dfbotusername);
-        configuration.settings.provideSetting(salesforcechatendpoint);
+        configuration.settings.provideSetting(dialogflowBotUsername);
+        configuration.settings.provideSetting(dialogflowBotPassword);
+        configuration.settings.provideSetting(salesforceChatApiEndpoint);
+        configuration.settings.provideSetting(salesforceOrganisationId);
+        configuration.settings.provideSetting(salesforceDeploymentId);
+        configuration.settings.provideSetting(salesforceButtonId);
+        configuration.settings.provideSetting(handoverTargetDepartmentName);
     }
 }
