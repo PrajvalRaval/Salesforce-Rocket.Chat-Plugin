@@ -29,8 +29,10 @@ import {
     SettingType,
 } from '@rocket.chat/apps-engine/definition/settings';
 import { IUser } from '@rocket.chat/apps-engine/definition/users';
-import { type } from 'os';
 
+// tslint:disable-next-line: prefer-const
+let globalAffinityToken = '';
+let globalSessionKey = '';
 export class SalesforcePluginApp extends App implements IPostMessageSent {
     constructor(info: IAppInfo, logger: ILogger, accessors: IAppAccessors) {
         super(info, logger, accessors);
@@ -141,6 +143,9 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                     const sessionIdResponseJSON = JSON.parse(content || '{}');
                     const sessionIdkey = JSON.stringify(sessionIdResponseJSON, null, '\t');
 
+                    globalAffinityToken = sessionIdResponseJSON.affinityToken;
+                    globalSessionKey = sessionIdResponseJSON.key;
+
                     const sessionIdbuilder = modify.getNotifier().getMessageBuilder();
                     sessionIdbuilder
                         .setRoom(message.room)
@@ -244,7 +249,6 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                                         return;
                                     }
                                     console.log(data);
-                                    retries = 0;
 
                                     const authHttpRequest: IHttpRequest = {
                                         headers: {
@@ -325,6 +329,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
 
                                         if (tk.messages[0].type === 'ChatEstablished') {
                                             // server done, deliver data to script to consume
+                                            retries = 0;
                                             callback(response);
                                         }
 
@@ -368,12 +373,11 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
         }
 
         if ('salesforce.agent' === LcAgent.username) {
-
             const sendMessageHttpRequest: IHttpRequest = {
                 headers: {
                     'X-LIVEAGENT-API-VERSION': '48',
-                    'X-LIVEAGENT-AFFINITY': 'f4941fa0',
-                    'X-LIVEAGENT-SESSION-KEY': '99fef40f-a3e4-4e42-a86c-a4964f7a59f9!1592235600340!0uBrBJJFF9gDQVCMHVSvAIbKi14=',
+                    'X-LIVEAGENT-AFFINITY': globalAffinityToken,
+                    'X-LIVEAGENT-SESSION-KEY': globalSessionKey,
                 },
                 data: {
                     text: message.text,
@@ -386,8 +390,6 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
             ).then((res) => {
                 console.log(res);
             });
-
-        // console.log('this is sessionSFaffinity ' + wjqdent);
         }
 
     }
