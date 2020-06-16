@@ -306,11 +306,17 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                                                         (forwardResponse) => {
                                                             console.log('room.forward response --> ' + forwardResponse);
                                                         },
-                                                    );
+                                                    ).catch((qerror) => {
+                                                        console.log(qerror);
+                                                    });
                                                 },
-                                            );
+                                            ).catch((wrror) => {
+                                                console.log(wrror);
+                                            });
                                         },
-                                    );
+                                    ).catch((wrror) => {
+                                        console.log(wrror);
+                                    });
 
                                 };
 
@@ -373,22 +379,70 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
         }
 
         if ('salesforce.agent' === LcAgent.username) {
-            const sendMessageHttpRequest: IHttpRequest = {
+
+            if (message.sender.username !== 'salesforce.agent') {
+                const sendMessageHttpRequest: IHttpRequest = {
+                    headers: {
+                        'X-LIVEAGENT-API-VERSION': '48',
+                        'X-LIVEAGENT-AFFINITY': globalAffinityToken,
+                        'X-LIVEAGENT-SESSION-KEY': globalSessionKey,
+                    },
+                    data: {
+                        text: message.text,
+                    },
+                };
+
+                http.post(
+                    `${salesforceChatApiEndpoint}Chasitor/ChatMessage`,
+                    sendMessageHttpRequest,
+                ).then((res) => {
+                    console.log(res);
+                }).catch((error) => {
+                    console.log(error);
+                });
+            }
+
+            const qpullingHttpRequest: IHttpRequest = {
                 headers: {
                     'X-LIVEAGENT-API-VERSION': '48',
                     'X-LIVEAGENT-AFFINITY': globalAffinityToken,
                     'X-LIVEAGENT-SESSION-KEY': globalSessionKey,
                 },
-                data: {
-                    text: message.text,
-                },
             };
 
-            http.post(
-                `${salesforceChatApiEndpoint}Chasitor/ChatMessage`,
-                sendMessageHttpRequest,
-            ).then((res) => {
-                console.log(res);
+            http.get(
+                `${salesforceChatApiEndpoint}System/Messages`,
+                qpullingHttpRequest,
+            ).then((response) => {
+                console.log('pullingHttpRequest2');
+                console.log(response);
+
+                const t = response.content;
+                const tk = JSON.parse(t || '{}');
+
+                if (tk.messages[0]) {
+
+                                    if (tk.messages[0].type === 'ChatMessage') {
+                                        // server done, deliver data to script to consume
+                                        console.log('this is message response');
+                                        console.log(tk.messages[0].message.text);
+
+                                        const apullingResponsekeybuilder = modify
+                            .getNotifier()
+                            .getMessageBuilder();
+                                        apullingResponsekeybuilder
+                            .setRoom(message.room)
+                            .setText(tk.messages[0].message.text)
+                            .setSender(LcAgent);
+                                        modify
+                            .getCreator()
+                            .finish(apullingResponsekeybuilder);
+
+                                    }
+
+                                }
+            }).catch((error) => {
+                console.log(error);
             });
         }
 
