@@ -4,9 +4,7 @@ import {
   IEnvironmentRead,
   IHttp,
   IHttpRequest,
-  IHttpResponse,
   ILogger,
-  IMessageBuilder,
   IModify,
   IPersistence,
   IRead,
@@ -15,9 +13,7 @@ import { App } from '@rocket.chat/apps-engine/definition/App';
 import {
   ILivechatMessage,
   ILivechatRoom,
-  ILivechatTransferData,
   IVisitor,
-  IVisitorEmail,
 } from '@rocket.chat/apps-engine/definition/livechat';
 import {
   IMessage,
@@ -31,8 +27,8 @@ import {
 import { IUser } from '@rocket.chat/apps-engine/definition/users';
 
 // tslint:disable-next-line: prefer-const
-let globalAffinityToken = '';
-let globalSessionKey = '';
+let globalAffinityToken: string = '';
+let globalSessionKey: string = '';
 
 export class SalesforcePluginApp extends App implements IPostMessageSent {
   constructor(info: IAppInfo, logger: ILogger, accessors: IAppAccessors) {
@@ -122,13 +118,17 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
       }
 
       const initiateMessageBuilder = modify.getNotifier().getMessageBuilder();
+
       initiateMessageBuilder
         .setRoom(message.room)
         .setText('Initiating Session With Salesforce')
         .setSender(LcAgent);
-      modify.getCreator().finish(initiateMessageBuilder);
 
-      const sessionIdHttpRequest: IHttpRequest = {
+      modify
+        .getCreator()
+        .finish(initiateMessageBuilder);
+
+      const generateSessionIdHttpRequest: IHttpRequest = {
         headers: {
           'X-LIVEAGENT-API-VERSION': '48',
           'X-LIVEAGENT-AFFINITY': 'null',
@@ -138,47 +138,53 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
       http
         .get(
           `${salesforceChatApiEndpoint}System/SessionId`,
-          sessionIdHttpRequest,
+          generateSessionIdHttpRequest,
         )
         .then((res) => {
+          console.log('Generating Session Id, Response:');
+          console.log(res);
+
           const { content } = res;
 
-          console.log('SESSION INITIATION RESPONSE:');
-          console.log(content);
-
-          const sessionIdResponseJSON = JSON.parse(content || '{}');
-          const sessionIdkey = JSON.stringify(
-            sessionIdResponseJSON,
+          const sessionIdParsedResponse = JSON.parse(content || '{}');
+          const sessionIdResponseStringified = JSON.stringify(
+            sessionIdParsedResponse,
             null,
             '\t',
           );
 
-          globalAffinityToken = sessionIdResponseJSON.affinityToken;
-          globalSessionKey = sessionIdResponseJSON.key;
+          globalAffinityToken = sessionIdParsedResponse.affinityToken;
+          globalSessionKey = sessionIdParsedResponse.key;
 
-          const sessionIdbuilder = modify.getNotifier().getMessageBuilder();
+          const sessionIdbuilder = modify
+          .getNotifier()
+          .getMessageBuilder();
+
           sessionIdbuilder
             .setRoom(message.room)
             .setText(
               `Session Initiated With Saleforce:
-                        ${sessionIdkey}
+                        ${sessionIdResponseStringified}
                         `,
             )
             .setSender(LcAgent);
-          modify.getCreator().finish(sessionIdbuilder);
+
+          modify
+            .getCreator()
+            .finish(sessionIdbuilder);
 
           const sendChatRequestHttpRequest: IHttpRequest = {
             headers: {
               'X-LIVEAGENT-API-VERSION': '48',
-              'X-LIVEAGENT-AFFINITY': sessionIdResponseJSON.affinityToken,
-              'X-LIVEAGENT-SESSION-KEY': sessionIdResponseJSON.key,
+              'X-LIVEAGENT-AFFINITY': sessionIdParsedResponse.affinityToken,
+              'X-LIVEAGENT-SESSION-KEY': sessionIdParsedResponse.key,
               'X-LIVEAGENT-SEQUENCE': '1',
             },
             data: {
               organizationId: salesforceOrganisationId,
               deploymentId: salesforceDeploymentId,
               buttonId: salesforceButtonId,
-              sessionId: sessionIdResponseJSON.id,
+              sessionId: sessionIdParsedResponse.id,
               userAgent: 'Lynx/2.8.8',
               language: 'en-US',
               screenResolution: '1900x1080',
@@ -195,48 +201,53 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
               `${salesforceChatApiEndpoint}Chasitor/ChasitorInit`,
               sendChatRequestHttpRequest,
             )
-            .then((chatReqRes) => {
-              console.log('chatReqRes response');
-              console.log(chatReqRes);
+            .then((chatRequestResponse) => {
+              console.log('Sending A Chat Request to Salesforce, Response:');
+              console.log(chatRequestResponse);
 
-              const chatReqReskey = JSON.stringify(chatReqRes, null, '\t');
+              const chatRequestStringifiedResponse = JSON.stringify(chatRequestResponse, null, '\t');
 
               const chatReqResbuilder = modify
                 .getNotifier()
                 .getMessageBuilder();
+
               chatReqResbuilder
                 .setRoom(message.room)
                 .setText(
                   `Sent A Chat Request To Salesforce:
-                        ${chatReqReskey}
+                        ${chatRequestStringifiedResponse}
                         `,
                 )
                 .setSender(LcAgent);
-              modify.getCreator().finish(chatReqResbuilder);
 
-              const pullingHttpRequest: IHttpRequest = {
+              modify
+                .getCreator()
+                .finish(chatReqResbuilder);
+
+              const pullingChatStatusHttpRequest: IHttpRequest = {
                 headers: {
                   'X-LIVEAGENT-API-VERSION': '48',
-                  'X-LIVEAGENT-AFFINITY': sessionIdResponseJSON.affinityToken,
-                  'X-LIVEAGENT-SESSION-KEY': sessionIdResponseJSON.key,
+                  'X-LIVEAGENT-AFFINITY': sessionIdParsedResponse.affinityToken,
+                  'X-LIVEAGENT-SESSION-KEY': sessionIdParsedResponse.key,
                 },
               };
 
               http
                 .get(
                   `${salesforceChatApiEndpoint}System/Messages`,
-                  pullingHttpRequest,
+                  pullingChatStatusHttpRequest,
                 )
-                .then((pullingResponse) => {
-                  console.log('pullingHttpRequest');
-                  console.log(pullingResponse);
+                .then((pullingChatStatusResponse) => {
+                  console.log('Check whether agent accepted request, Response:');
+                  console.log(pullingChatStatusResponse);
 
-                  const pullingContent = pullingResponse.content;
+                  const pullingContent = pullingChatStatusResponse.content;
                   const pullingKey = JSON.parse(pullingContent || '{}');
 
                   const pullingResponsekeybuilder = modify
                     .getNotifier()
                     .getMessageBuilder();
+
                   pullingResponsekeybuilder
                     .setRoom(message.room)
                     .setText(
@@ -245,16 +256,21 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                         `,
                     )
                     .setSender(LcAgent);
-                  modify.getCreator().finish(pullingResponsekeybuilder);
+
+                  modify
+                    .getCreator()
+                    .finish(pullingResponsekeybuilder);
 
                   let retries = 20;
 
                   const callback = (data?, error?) => {
-                    // consume data
                     if (error) {
+                      console.log('Check whether agent accepted request, Callback error:');
                       console.error(error);
                       return;
                     }
+
+                    console.log('Check whether agent accepted request, Callback Response:');
                     console.log(data);
 
                     const authHttpRequest: IHttpRequest = {
@@ -273,19 +289,11 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                         authHttpRequest,
                       )
                       .then((loginResponse) => {
-                        // console.log(loginResponse.content);
                         const loginResponseJSON = JSON.parse(
                           loginResponse.content || '{}',
                         );
-                        console.log(
-                          'loginResponseJSON.data.userId --> ' +
-                            loginResponseJSON.data.userId,
-                        );
-                        console.log(
-                          'loginResponseJSON.data.authToken --> ' +
-                            loginResponseJSON.data.authToken,
-                        );
-                        console.log('message.room.id --> ' + message.room.id);
+                        console.log('Check whether agent accepted request, Handoff Login Response:');
+                        console.log(loginResponse);
 
                         const deptHttpRequest: IHttpRequest = {
                           headers: {
@@ -293,7 +301,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                             'X-User-Id': loginResponseJSON.data.userId,
                           },
                         };
-                        // http_request_no_2 --> get department id
+
                         http
                           .get(
                             'http://localhost:3000/api/v1/livechat/department',
@@ -303,7 +311,10 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                             const deptResponseJSON = JSON.parse(
                               deptResponse.content || '{}',
                             );
-                            // console.log(deptResponseJSON);
+
+                            console.log('Check whether agent accepted request, Handoff Department Response:');
+                            console.log(deptResponse);
+
                             let targetDeptId: string = '';
                             deptResponseJSON.departments.forEach(
                               (department) => {
@@ -313,9 +324,6 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                               },
                             );
 
-                            console.log('Target Dept Id --> ' + targetDeptId);
-
-                            // http_request_no_3 --> make handover request
                             const ForwardHttpRequest: IHttpRequest = {
                               headers: {
                                 'Content-Type': 'application/json',
@@ -334,83 +342,80 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                                 ForwardHttpRequest,
                               )
                               .then((forwardResponse) => {
-                                console.log(
-                                  'room.forward response --> ' + forwardResponse,
-                                );
+                                console.log('Check whether agent accepted request, Handoff Forward Response:');
+                                console.log(forwardResponse);
                               })
-                              .catch((qerror) => {
-                                console.log(qerror);
+                              .catch((forwardError) => {
+                                console.log('Check whether agent accepted request, Handoff Forward Error:');
+                                console.log(forwardError);
                               });
                           })
-                          .catch((wrror) => {
-                            console.log(wrror);
+                          .catch((deptError) => {
+                            console.log('Check whether agent accepted request, Handoff Department Error:');
+                            console.log(deptError);
                           });
                       })
-                      .catch((wrror) => {
-                        console.log(wrror);
+                      .catch((loginError) => {
+                        console.log(loginError);
                       });
                   };
 
                   // tslint:disable-next-line: no-shadowed-variable
-                  function request(callback) {
+                  function checkCurrentChatStatus(callback) {
                     http
                       .get(
                         `${salesforceChatApiEndpoint}System/Messages`,
-                        pullingHttpRequest,
+                        pullingChatStatusHttpRequest,
                       )
                       .then((response) => {
-                        // request successful
+                        const checkCurrentChatStatusContent = response.content;
+                        const checkParsedResponse = JSON.parse(checkCurrentChatStatusContent || '{}');
 
-                        const t = response.content;
-                        const tk = JSON.parse(t || '{}');
+                        const checkMessageArray = checkParsedResponse.messages;
 
-                        if (tk.messages[0]) {
-                          if (tk.messages[0].type === 'ChatEstablished') {
-                            // server done, deliver data to script to consume
-                            retries = 0;
+                        if (checkMessageArray[0]) {
+                          if (checkMessageArray[0].type === 'ChatEstablished') {
                             callback(response);
                           }
                         } else {
-                          // server not done yet
-                          // retry, if any retries left
                           if (retries > 0) {
                             --retries;
-                            request(callback);
+                            checkCurrentChatStatus(callback);
                           } else {
-                            // no retries left, calling callback with error
-                            callback([], 'out of retries');
+                            callback([], 'Check whether agent accepted request, Error: Retries Limit Exceeded.');
                           }
                         }
                       })
                       .catch((error) => {
-                        // ajax error occurred
-                        // would be better to not retry on 404, 500 and other unrecoverable HTTP errors
-                        // retry, if any retries left
                         if (retries > 0) {
                           --retries;
-                          request(callback);
+                          checkCurrentChatStatus(callback);
                         } else {
-                          // no retries left, calling callback with error
                           callback([], error);
                         }
                       });
                   }
 
-                  request(callback);
+                  checkCurrentChatStatus(callback);
+                }).catch((error) => {
+                  console.log('Check whether agent accepted request, Error:');
+                  console.log(error);
                 });
             })
             .catch((error) => {
+              console.log('Sending A Chat Request to Salesforce, Error:');
               console.log(error);
             });
         })
         .catch((error) => {
+          console.log('Getting Session Id, Error:');
           console.log(error);
         });
     }
 
     if (LcAgent.username === salesforceBotUsername) {
       if (message.sender.username !== salesforceBotUsername) {
-        const sendMessageHttpRequest: IHttpRequest = {
+        const sendMessageToLiveAgentHttpRequest: IHttpRequest = {
           headers: {
             'X-LIVEAGENT-API-VERSION': '48',
             'X-LIVEAGENT-AFFINITY': globalAffinityToken,
@@ -424,17 +429,19 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
         http
           .post(
             `${salesforceChatApiEndpoint}Chasitor/ChatMessage`,
-            sendMessageHttpRequest,
+            sendMessageToLiveAgentHttpRequest,
           )
           .then((res) => {
+            console.log('Sending Message To Liveagent, Response:');
             console.log(res);
           })
           .catch((error) => {
+            console.log('Sending Message To Liveagent, Error:');
             console.log(error);
           });
       }
 
-      const qpullingHttpRequest: IHttpRequest = {
+      const pullingMesssagesSFAHttpRequest: IHttpRequest = {
         headers: {
           'X-LIVEAGENT-API-VERSION': '48',
           'X-LIVEAGENT-AFFINITY': globalAffinityToken,
@@ -443,7 +450,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
       };
 
       http
-        .get(`${salesforceChatApiEndpoint}System/Messages`, qpullingHttpRequest)
+        .get(`${salesforceChatApiEndpoint}System/Messages`, pullingMesssagesSFAHttpRequest)
         .then((response) => {
           const { content } = response;
           const contentParsed = JSON.parse(content || '{}');
@@ -451,10 +458,10 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
           const messageArray = contentParsed.messages;
 
           if (messageArray) {
-            console.log('messageArray here:');
+            console.log('Pulling Messages from Liveagent, messageArray here:');
             console.log(messageArray);
             if (messageArray[0]) {
-              console.log('messageArray[0] here:');
+              console.log('Pulling Messages from Liveagent, messageArray[0] here:');
               console.log(messageArray[0]);
 
               const messageType = messageArray[0].type;
@@ -465,6 +472,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                   const agentMessagebuilder = modify
                     .getNotifier()
                     .getMessageBuilder();
+
                   agentMessagebuilder
                     .setRoom(message.room)
                     .setText(messageText)
@@ -477,6 +485,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                   const agentTypingMessagebuilder = modify
                     .getNotifier()
                     .getMessageBuilder();
+
                   agentTypingMessagebuilder
                     .setRoom(message.room)
                     .setText('Agent Typing')
@@ -489,6 +498,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                   const agentNotTypingMessagebuilder = modify
                     .getNotifier()
                     .getMessageBuilder();
+
                   agentNotTypingMessagebuilder
                     .setRoom(message.room)
                     .setText('Agent Not Typing')
@@ -498,6 +508,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                   break;
 
                 default:
+                  console.log('Pulling Messages from Liveagent, Default messageType:');
                   console.log(messageType);
                   break;
               }
@@ -505,6 +516,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
           }
         })
         .catch((error) => {
+          console.log('Pulling Messages from Liveagent, Error:');
           console.log(error);
         });
     }
