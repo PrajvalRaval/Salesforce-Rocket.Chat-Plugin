@@ -32,13 +32,13 @@ A Rocket.Chat marketplace app for Salesforce Live Agent (Chat) Integration.
 
     `rc-apps deploy --url http://localhost:3000 --username user.name --password 123456`
     
-1. In Rocket Chat Server, can now go to **Administration** -> **Apps** and you access our app from there.
+1. In Rocket Chat Server, you can now go to **Administration** -> **Apps** and you access our app from there.
 
 ## App Configuration
 
 1. **Dialogflow Bot Username** and **Dialogflow Bot Password**
 
-    + Create a new user in Rocket Chat, from **Administration** -> **Users**. This user should be created with `bot` and `livechat-agent` roles. Optionally, you can also connect this bot user to Dialogflow using this [app](https://github.com/RocketChat/Apps.Dialogflow/tree/develop-gsoc).
+    + Create a new user in Rocket Chat from **Administration** -> **Users**. This user should be created with `bot` and `livechat-agent` roles. Optionally, you can also connect this bot user to Dialogflow using this [app](https://github.com/RocketChat/Apps.Dialogflow/tree/develop-gsoc).
     
     + Go to **Omnichannel** -> **Departments** -> **New Department** and create a new department. Assign our bot user to that deparment. 
     
