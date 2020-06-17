@@ -530,6 +530,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
       type: SettingType.STRING,
       packageValue: '',
       i18nLabel: 'Dialogflow Bot Username',
+      i18nDescription: 'Enter Live Chat agent username, hadling requests from Dialogflow Bot.',
       required: true,
     };
     const dialogflowBotPassword: ISetting = {
@@ -538,6 +539,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
       type: SettingType.STRING,
       packageValue: '',
       i18nLabel: 'Dialogflow Bot Password',
+      i18nDescription: 'Enter Live Chat agent password, hadling requests from Dialogflow Bot.',
       required: true,
     };
     const salesforceBotUsername: ISetting = {
@@ -546,6 +548,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
       type: SettingType.STRING,
       packageValue: '',
       i18nLabel: 'Salesforce Bot Username',
+      i18nDescription: 'Enter Live Chat agent username we will be using as Salesforce Agent.',
       required: true,
     };
     const salesforceChatApiEndpoint: ISetting = {
@@ -594,6 +597,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
       type: SettingType.STRING,
       packageValue: '',
       i18nLabel: 'Handover Target Department Name',
+      i18nDescription: 'Enter Live Chat department name containg Salesforce agent user.',
       required: true,
     };
 
