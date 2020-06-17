@@ -26,7 +26,6 @@ import {
 } from '@rocket.chat/apps-engine/definition/settings';
 import { IUser } from '@rocket.chat/apps-engine/definition/users';
 
-// tslint:disable-next-line: prefer-const
 let globalAffinityToken: string = '';
 let globalSessionKey: string = '';
 
@@ -556,7 +555,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
       packageValue: '',
       i18nLabel: 'Salesforce Chat Enpoint',
       i18nDescription:
-        'To find this value, go to your Salesforce Dashboard -> Setup (In Gear Icon) -> Quick Find Search -> Type in: chat setting -> Click on Chat Settings option -> Copy Chat API Endpoint value.',
+        'To find this value, go to your Salesforce Dashboard -> Setup (In Gear Icon) -> Quick Find Search -> Search for chat setting -> Click on Chat Settings option -> Copy Chat API Endpoint value.',
       required: true,
     };
     const salesforceOrganisationId: ISetting = {
@@ -566,7 +565,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
       packageValue: '',
       i18nLabel: 'Salesforce Organization ID',
       i18nDescription:
-        'To find this value, go to your Salesforce Dashboard -> Setup (In Gear Icon) -> Quick Find Search -> Type in: company information -> Click on Company Information option -> Copy Salesforce.com Organization ID	value.',
+        'To find this value, go to your Salesforce Dashboard -> Setup (In Gear Icon) -> Quick Find Search -> Search for company information -> Click on Company Information option -> Copy Salesforce.com Organization ID	value.',
       required: true,
     };
     const salesforceDeploymentId: ISetting = {
@@ -576,7 +575,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
       packageValue: '',
       i18nLabel: 'Salesforce Deployment ID',
       i18nDescription:
-        'To find this value, go to your Salesforce Dashboard -> Setup (In Gear Icon) -> Quick Find Search -> Type in: embedded service deployments -> Click on Embedded Service Deployments option -> Locate current chat group and click on View -> From Embedded Service Code Snippets option, click on Get Code -> Locate the value of deploymentId from Chat Code Snippet.',
+        'To find this value, go to your Salesforce Dashboard -> Setup (In Gear Icon) -> Quick Find Search -> Search for embedded service deployments -> Click on Embedded Service Deployments option -> Locate current chat group and click on View -> From Embedded Service Code Snippets option, click on Get Code -> Locate the value of deploymentId from Chat Code Snippet.',
       required: true,
     };
     const salesforceButtonId: ISetting = {
@@ -586,7 +585,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
       packageValue: '',
       i18nLabel: 'Salesforce Button ID',
       i18nDescription:
-        'To find this value, go to your Salesforce Dashboard -> Setup (In Gear Icon) -> Quick Find Search -> Type in: embedded service deployments -> Click on Embedded Service Deployments option -> Locate current chat group and click on View -> From Embedded Service Code Snippets option, click on Get Code -> Locate the value of buttonId from Chat Code Snippet.',
+        'To find this value, go to your Salesforce Dashboard -> Setup (In Gear Icon) -> Quick Find Search -> Search for embedded service deployments -> Click on Embedded Service Deployments option -> Locate current chat group and click on View -> From Embedded Service Code Snippets option, click on Get Code -> Locate the value of buttonId from Chat Code Snippet.',
       required: true,
     };
     const handoverTargetDepartmentName: ISetting = {
