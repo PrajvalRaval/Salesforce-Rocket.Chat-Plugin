@@ -596,7 +596,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
       type: SettingType.STRING,
       packageValue: '',
       i18nLabel: 'Handover Target Department Name',
-      i18nDescription: 'Enter Live Chat department name containg Salesforce agent user.',
+      i18nDescription: 'Enter Live Chat department name containing Salesforce agent user.',
       required: true,
     };
 
