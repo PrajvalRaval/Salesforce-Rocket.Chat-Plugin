@@ -26,8 +26,7 @@ import {
 } from '@rocket.chat/apps-engine/definition/settings';
 import { IUser } from '@rocket.chat/apps-engine/definition/users';
 
-let globalAffinityToken: string = '';
-let globalSessionKey: string = '';
+const sessionVariablesArray = {};
 
 export class SalesforcePluginApp extends App implements IPostMessageSent {
   constructor(info: IAppInfo, logger: ILogger, accessors: IAppAccessors) {
@@ -152,8 +151,8 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
             '\t',
           );
 
-          globalAffinityToken = sessionIdParsedResponse.affinityToken;
-          globalSessionKey = sessionIdParsedResponse.key;
+          sessionVariablesArray[message.room.id + 'affinity'] = sessionIdParsedResponse.affinityToken;
+          sessionVariablesArray[message.room.id + 'sessionkey'] = sessionIdParsedResponse.key;
 
           const sessionIdbuilder = modify
           .getNotifier()
@@ -417,8 +416,8 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
         const sendMessageToLiveAgentHttpRequest: IHttpRequest = {
           headers: {
             'X-LIVEAGENT-API-VERSION': '48',
-            'X-LIVEAGENT-AFFINITY': globalAffinityToken,
-            'X-LIVEAGENT-SESSION-KEY': globalSessionKey,
+            'X-LIVEAGENT-AFFINITY': sessionVariablesArray[message.room.id + 'affinity'],
+            'X-LIVEAGENT-SESSION-KEY': sessionVariablesArray[message.room.id + 'sessionkey'],
           },
           data: {
             text: message.text,
@@ -443,8 +442,8 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
       const pullingMesssagesSFAHttpRequest: IHttpRequest = {
         headers: {
           'X-LIVEAGENT-API-VERSION': '48',
-          'X-LIVEAGENT-AFFINITY': globalAffinityToken,
-          'X-LIVEAGENT-SESSION-KEY': globalSessionKey,
+          'X-LIVEAGENT-AFFINITY': sessionVariablesArray[message.room.id + 'affinity'],
+            'X-LIVEAGENT-SESSION-KEY': sessionVariablesArray[message.room.id + 'sessionkey'],
         },
       };
 
