@@ -1,5 +1,12 @@
 # Salesforce Live Agent Integration App
 
+<p  align="center">
+
+<img  src="https://user-images.githubusercontent.com/41849970/84944024-d03e0d80-b102-11ea-94fd-b5500dca314d.png">
+
+</p>
+
+
 A Rocket.Chat marketplace app for Salesforce Live Agent (Chat) Integration.
 
 ## Prerequisites
