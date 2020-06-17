@@ -414,7 +414,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
     }
 
     if (LcAgent.username === salesforceBotUsername) {
-      if (message.sender.username !== salesforceBotUsername) {
+      if (message.sender.username !== salesforceBotUsername && message.text !== 'Closed by visitor') {
         const sendMessageToLiveAgentHttpRequest: IHttpRequest = {
           headers: {
             'X-LIVEAGENT-API-VERSION': '48',
