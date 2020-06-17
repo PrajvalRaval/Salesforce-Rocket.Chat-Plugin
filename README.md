@@ -30,7 +30,7 @@ A Rocket.Chat marketplace app for Salesforce Live Agent (Chat) Integration.
 
 1. Deploy to your Rocket Chat Server
 
-    `rc-apps deploy --url http://localhost:3000 --username user.name --password 123456`
+    `rc-apps deploy --url http://localhost:3000 --username <YOUR USERNAME> --password <YOUR PASSWORD>`
     
 1. In Rocket Chat Server, you can now go to **Administration** -> **Apps** and you access our app from there.
 
