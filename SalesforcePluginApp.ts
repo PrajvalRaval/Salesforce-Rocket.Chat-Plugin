@@ -19,14 +19,16 @@ import {
   IMessage,
   IPostMessageSent,
 } from '@rocket.chat/apps-engine/definition/messages';
-import { IAppInfo } from '@rocket.chat/apps-engine/definition/metadata';
+import {
+  IAppInfo,
+  RocketChatAssociationModel,
+  RocketChatAssociationRecord,
+} from '@rocket.chat/apps-engine/definition/metadata';
 import {
   ISetting,
   SettingType,
 } from '@rocket.chat/apps-engine/definition/settings';
 import { IUser } from '@rocket.chat/apps-engine/definition/users';
-
-const sessionVariablesArray = {};
 
 export class SalesforcePluginApp extends App implements IPostMessageSent {
   constructor(info: IAppInfo, logger: ILogger, accessors: IAppAccessors) {
@@ -122,9 +124,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
         .setText('Initiating Session With Salesforce')
         .setSender(LcAgent);
 
-      modify
-        .getCreator()
-        .finish(initiateMessageBuilder);
+      modify.getCreator().finish(initiateMessageBuilder);
 
       const generateSessionIdHttpRequest: IHttpRequest = {
         headers: {
@@ -138,7 +138,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
           `${salesforceChatApiEndpoint}System/SessionId`,
           generateSessionIdHttpRequest,
         )
-        .then((res) => {
+        .then(async (res) => {
           console.log('Generating Session Id, Response:');
           console.log(res);
 
@@ -151,12 +151,13 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
             '\t',
           );
 
-          sessionVariablesArray[message.room.id + 'affinity'] = sessionIdParsedResponse.affinityToken;
-          sessionVariablesArray[message.room.id + 'sessionkey'] = sessionIdParsedResponse.key;
+          const assoc = new RocketChatAssociationRecord(
+            RocketChatAssociationModel.ROOM,
+            message.room.id,
+          );
+          persistence.createWithAssociation(sessionIdParsedResponse, assoc);
 
-          const sessionIdbuilder = modify
-          .getNotifier()
-          .getMessageBuilder();
+          const sessionIdbuilder = modify.getNotifier().getMessageBuilder();
 
           sessionIdbuilder
             .setRoom(message.room)
@@ -167,9 +168,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
             )
             .setSender(LcAgent);
 
-          modify
-            .getCreator()
-            .finish(sessionIdbuilder);
+          modify.getCreator().finish(sessionIdbuilder);
 
           const sendChatRequestHttpRequest: IHttpRequest = {
             headers: {
@@ -203,7 +202,11 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
               console.log('Sending A Chat Request to Salesforce, Response:');
               console.log(chatRequestResponse);
 
-              const chatRequestStringifiedResponse = JSON.stringify(chatRequestResponse, null, '\t');
+              const chatRequestStringifiedResponse = JSON.stringify(
+                chatRequestResponse,
+                null,
+                '\t',
+              );
 
               const chatReqResbuilder = modify
                 .getNotifier()
@@ -218,9 +221,7 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                 )
                 .setSender(LcAgent);
 
-              modify
-                .getCreator()
-                .finish(chatReqResbuilder);
+              modify.getCreator().finish(chatReqResbuilder);
 
               const pullingChatStatusHttpRequest: IHttpRequest = {
                 headers: {
@@ -236,7 +237,9 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                   pullingChatStatusHttpRequest,
                 )
                 .then((pullingChatStatusResponse) => {
-                  console.log('Check whether agent accepted request, Response:');
+                  console.log(
+                    'Check whether agent accepted request, Response:',
+                  );
                   console.log(pullingChatStatusResponse);
 
                   const pullingContent = pullingChatStatusResponse.content;
@@ -255,20 +258,22 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                     )
                     .setSender(LcAgent);
 
-                  modify
-                    .getCreator()
-                    .finish(pullingResponsekeybuilder);
+                  modify.getCreator().finish(pullingResponsekeybuilder);
 
                   let retries = 20;
 
                   const callback = (data?, error?) => {
                     if (error) {
-                      console.log('Check whether agent accepted request, Callback error:');
+                      console.log(
+                        'Check whether agent accepted request, Callback error:',
+                      );
                       console.error(error);
                       return;
                     }
 
-                    console.log('Check whether agent accepted request, Callback Response:');
+                    console.log(
+                      'Check whether agent accepted request, Callback Response:',
+                    );
                     console.log(data);
 
                     const authHttpRequest: IHttpRequest = {
@@ -290,7 +295,9 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                         const loginResponseJSON = JSON.parse(
                           loginResponse.content || '{}',
                         );
-                        console.log('Check whether agent accepted request, Handoff Login Response:');
+                        console.log(
+                          'Check whether agent accepted request, Handoff Login Response:',
+                        );
                         console.log(loginResponse);
 
                         const deptHttpRequest: IHttpRequest = {
@@ -310,7 +317,9 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                               deptResponse.content || '{}',
                             );
 
-                            console.log('Check whether agent accepted request, Handoff Department Response:');
+                            console.log(
+                              'Check whether agent accepted request, Handoff Department Response:',
+                            );
                             console.log(deptResponse);
 
                             let targetDeptId: string = '';
@@ -340,16 +349,22 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                                 ForwardHttpRequest,
                               )
                               .then((forwardResponse) => {
-                                console.log('Check whether agent accepted request, Handoff Forward Response:');
+                                console.log(
+                                  'Check whether agent accepted request, Handoff Forward Response:',
+                                );
                                 console.log(forwardResponse);
                               })
                               .catch((forwardError) => {
-                                console.log('Check whether agent accepted request, Handoff Forward Error:');
+                                console.log(
+                                  'Check whether agent accepted request, Handoff Forward Error:',
+                                );
                                 console.log(forwardError);
                               });
                           })
                           .catch((deptError) => {
-                            console.log('Check whether agent accepted request, Handoff Department Error:');
+                            console.log(
+                              'Check whether agent accepted request, Handoff Department Error:',
+                            );
                             console.log(deptError);
                           });
                       })
@@ -367,7 +382,9 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                       )
                       .then((response) => {
                         const checkCurrentChatStatusContent = response.content;
-                        const checkParsedResponse = JSON.parse(checkCurrentChatStatusContent || '{}');
+                        const checkParsedResponse = JSON.parse(
+                          checkCurrentChatStatusContent || '{}',
+                        );
 
                         const checkMessageArray = checkParsedResponse.messages;
 
@@ -380,7 +397,10 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                             --retries;
                             checkCurrentChatStatus(callback);
                           } else {
-                            callback([], 'Check whether agent accepted request, Error: Retries Limit Exceeded.');
+                            callback(
+                              [],
+                              'Check whether agent accepted request, Error: Retries Limit Exceeded.',
+                            );
                           }
                         }
                       })
@@ -395,7 +415,8 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                   }
 
                   checkCurrentChatStatus(callback);
-                }).catch((error) => {
+                })
+                .catch((error) => {
                   console.log('Check whether agent accepted request, Error:');
                   console.log(error);
                 });
@@ -412,12 +433,72 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
     }
 
     if (LcAgent.username === salesforceBotUsername) {
-      if (message.sender.username !== salesforceBotUsername && message.text !== 'Closed by visitor') {
+      const assoc = new RocketChatAssociationRecord(
+        RocketChatAssociationModel.ROOM,
+        message.room.id,
+      );
+
+      let persisantAffinity;
+      let persistantKey;
+
+      try {
+        const awayDatas = await read
+          .getPersistenceReader()
+          .readByAssociation(assoc);
+
+        const contentStringified = JSON.stringify(awayDatas[0]);
+        const contentParsed = JSON.parse(contentStringified);
+
+        console.log(
+          'Find Session Variables from Persistent Storage, Response: ',
+        );
+        console.log(contentParsed);
+
+        persisantAffinity = contentParsed.affinityToken;
+        persistantKey = contentParsed.key;
+      } catch {
+        console.log(
+          'Error: Cannot Find Session Variables from Persistent Storage.',
+        );
+      }
+
+      if (message.text === 'Closed by visitor') {
+        const closeLiveAgentChatHttpRequest: IHttpRequest = {
+          headers: {
+            'X-LIVEAGENT-API-VERSION': '48',
+            'X-LIVEAGENT-AFFINITY': persisantAffinity,
+            'X-LIVEAGENT-SESSION-KEY': persistantKey,
+          },
+          data: {
+            reason: 'client',
+          },
+        };
+
+        http
+          .post(
+            `${salesforceChatApiEndpoint}Chasitor/ChatEnd`,
+            closeLiveAgentChatHttpRequest,
+          )
+          .then((res) => {
+            console.log('Closing Liveagent Chat, Response:');
+            persistence.removeByAssociation(assoc);
+            console.log(res);
+          })
+          .catch((error) => {
+            console.log('Closing Liveagent Chat, Error:');
+            console.log(error);
+          });
+      }
+
+      if (
+        message.sender.username !== salesforceBotUsername &&
+        message.text !== 'Closed by visitor'
+      ) {
         const sendMessageToLiveAgentHttpRequest: IHttpRequest = {
           headers: {
             'X-LIVEAGENT-API-VERSION': '48',
-            'X-LIVEAGENT-AFFINITY': sessionVariablesArray[message.room.id + 'affinity'],
-            'X-LIVEAGENT-SESSION-KEY': sessionVariablesArray[message.room.id + 'sessionkey'],
+            'X-LIVEAGENT-AFFINITY': persisantAffinity,
+            'X-LIVEAGENT-SESSION-KEY': persistantKey,
           },
           data: {
             text: message.text,
@@ -442,13 +523,16 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
       const pullingMesssagesSFAHttpRequest: IHttpRequest = {
         headers: {
           'X-LIVEAGENT-API-VERSION': '48',
-          'X-LIVEAGENT-AFFINITY': sessionVariablesArray[message.room.id + 'affinity'],
-            'X-LIVEAGENT-SESSION-KEY': sessionVariablesArray[message.room.id + 'sessionkey'],
+          'X-LIVEAGENT-AFFINITY': persisantAffinity,
+          'X-LIVEAGENT-SESSION-KEY': persistantKey,
         },
       };
 
       http
-        .get(`${salesforceChatApiEndpoint}System/Messages`, pullingMesssagesSFAHttpRequest)
+        .get(
+          `${salesforceChatApiEndpoint}System/Messages`,
+          pullingMesssagesSFAHttpRequest,
+        )
         .then((response) => {
           const { content } = response;
           const contentParsed = JSON.parse(content || '{}');
@@ -459,7 +543,9 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
             console.log('Pulling Messages from Liveagent, messageArray here:');
             console.log(messageArray);
             if (messageArray[0]) {
-              console.log('Pulling Messages from Liveagent, messageArray[0] here:');
+              console.log(
+                'Pulling Messages from Liveagent, messageArray[0] here:',
+              );
               console.log(messageArray[0]);
 
               const messageType = messageArray[0].type;
@@ -505,8 +591,25 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                   modify.getCreator().finish(agentNotTypingMessagebuilder);
                   break;
 
+                case 'ChatEnded':
+                  const chatEndedMessagebuilder = modify
+                    .getNotifier()
+                    .getMessageBuilder();
+
+                  chatEndedMessagebuilder
+                    .setRoom(message.room)
+                    .setText('Closed By Agent')
+                    .setSender(LcAgent);
+
+                  persistence.removeByAssociation(assoc);
+
+                  modify.getCreator().finish(chatEndedMessagebuilder);
+                  break;
+
                 default:
-                  console.log('Pulling Messages from Liveagent, Default messageType:');
+                  console.log(
+                    'Pulling Messages from Liveagent, Default messageType:',
+                  );
                   console.log(messageType);
                   break;
               }
@@ -529,7 +632,8 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
       type: SettingType.STRING,
       packageValue: '',
       i18nLabel: 'Dialogflow Bot Username',
-      i18nDescription: 'Enter Live Chat agent username, hadling requests from Dialogflow Bot.',
+      i18nDescription:
+        'Enter Live Chat agent username, hadling requests from Dialogflow Bot.',
       required: true,
     };
     const dialogflowBotPassword: ISetting = {
@@ -538,7 +642,8 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
       type: SettingType.STRING,
       packageValue: '',
       i18nLabel: 'Dialogflow Bot Password',
-      i18nDescription: 'Enter Live Chat agent password, hadling requests from Dialogflow Bot.',
+      i18nDescription:
+        'Enter Live Chat agent password, hadling requests from Dialogflow Bot.',
       required: true,
     };
     const salesforceBotUsername: ISetting = {
@@ -547,7 +652,8 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
       type: SettingType.STRING,
       packageValue: '',
       i18nLabel: 'Salesforce Bot Username',
-      i18nDescription: 'Enter Live Chat agent username we will be using as Salesforce Agent.',
+      i18nDescription:
+        'Enter Live Chat agent username we will be using as Salesforce Agent.',
       required: true,
     };
     const salesforceChatApiEndpoint: ISetting = {
@@ -596,7 +702,8 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
       type: SettingType.STRING,
       packageValue: '',
       i18nLabel: 'Handover Target Department Name',
-      i18nDescription: 'Enter Live Chat department name containing Salesforce agent user.',
+      i18nDescription:
+        'Enter Live Chat department name containing Salesforce agent user.',
       required: true,
     };
 
