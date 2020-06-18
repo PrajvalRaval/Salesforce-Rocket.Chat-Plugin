@@ -151,12 +151,6 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
             '\t',
           );
 
-          const assoc = new RocketChatAssociationRecord(
-            RocketChatAssociationModel.ROOM,
-            message.room.id,
-          );
-          persistence.createWithAssociation(sessionIdParsedResponse, assoc);
-
           const sessionIdbuilder = modify.getNotifier().getMessageBuilder();
 
           sessionIdbuilder
@@ -275,6 +269,12 @@ export class SalesforcePluginApp extends App implements IPostMessageSent {
                       'Check whether agent accepted request, Callback Response:',
                     );
                     console.log(data);
+
+                    const assoc = new RocketChatAssociationRecord(
+                      RocketChatAssociationModel.ROOM,
+                      message.room.id,
+                    );
+                    persistence.createWithAssociation(sessionIdParsedResponse, assoc);
 
                     const authHttpRequest: IHttpRequest = {
                       headers: {
